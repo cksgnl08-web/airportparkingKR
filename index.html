@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="국내 15개 공항의 예상 주차요금을 간편하게 계산합니다.">
+  <title>공항주차비 — 국내공항 주차요금 계산기</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="공항주차비 홈">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span>공항주차비</span>
+    </a>
+    <p class="header-note">전국 15개 공항 · 2026년 9월 확인</p>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="eyebrow"><span></span> 떠나기 전, 주차비부터 가볍게</div>
+      <h1 id="hero-title">공항 주차비,<br><em>미리 알고 출발하세요.</em></h1>
+      <p>공항과 시간을 고르면 차량·할인 조건까지 반영해 예상 요금을 바로 계산해 드려요.</p>
+      <div class="airport-strip" aria-label="지원 공항">
+        <span>ICN</span><i></i><span>GMP</span><i></i><span>CJU</span><i></i><span>PUS</span><i></i><span>+11</span>
+      </div>
+    </section>
+
+    <section class="calculator-shell" aria-label="주차요금 계산기">
+      <form id="parking-form" class="calculator-form" novalidate>
+        <section class="form-section" aria-labelledby="airport-heading">
+          <div class="section-heading">
+            <span class="step">01</span>
+            <div>
+              <h2 id="airport-heading">어느 공항으로 가세요?</h2>
+              <p>공항별 주차장과 요금이 자동으로 바뀝니다.</p>
+            </div>
+          </div>
+
+          <div class="field-grid two-columns">
+            <label class="field">
+              <span>공항</span>
+              <select id="airport" name="airport"></select>
+            </label>
+            <label class="field">
+              <span>주차장</span>
+              <select id="parking-lot" name="parkingLot"></select>
+            </label>
+          </div>
+          <p id="lot-note" class="inline-note"></p>
+        </section>
+
+        <section class="form-section" aria-labelledby="schedule-heading">
+          <div class="section-heading">
+            <span class="step">02</span>
+            <div>
+              <h2 id="schedule-heading">언제 들어가고 나오세요?</h2>
+              <p>금·토·일 요금은 날짜를 보고 자동 반영해요.</p>
+            </div>
+          </div>
+
+          <div class="field-grid two-columns">
+            <label class="field">
+              <span>입차 일시</span>
+              <input id="entry-time" name="entryTime" type="datetime-local" required>
+            </label>
+            <label class="field">
+              <span>출차 일시</span>
+              <input id="exit-time" name="exitTime" type="datetime-local" required>
+            </label>
+          </div>
+          <div class="quick-duration" aria-label="빠른 기간 선택">
+            <span>빠른 선택</span>
+            <button type="button" data-days="1">1일</button>
+            <button type="button" data-days="3">3일</button>
+            <button type="button" data-days="5">5일</button>
+            <button type="button" data-days="7">7일</button>
+          </div>
+
+          <details class="holiday-settings">
+            <summary>법정공휴일이 포함되어 있나요?</summary>
+            <p>요금 구간이 시작되는 공휴일을 추가하면 금·토·일 요금으로 계산합니다.</p>
+            <div class="holiday-control">
+              <label class="field compact">
+                <span class="sr-only">법정공휴일 날짜</span>
+                <input id="holiday-date" type="date">
+              </label>
+              <button id="add-holiday" type="button">날짜 추가</button>
+            </div>
+            <div id="holiday-list" class="holiday-list" aria-live="polite"></div>
+          </details>
+        </section>
+
+        <section class="form-section" aria-labelledby="vehicle-heading">
+          <div class="section-heading">
+            <span class="step">03</span>
+            <div>
+              <h2 id="vehicle-heading">어떤 차량인가요?</h2>
+              <p>차량 크기와 할인 자격은 따로 선택해요.</p>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>차량 구분</span>
+            <select id="vehicle-type" name="vehicleType">
+              <option value="passenger">승용차 · 전 차종</option>
+              <option value="van-small">승합차 · 15인승 이하</option>
+              <option value="van-large">승합차 · 16인승 이상</option>
+              <option value="freight-small">화물·특수차 · 소형 기준</option>
+              <option value="freight-large">화물·특수차 · 대형 기준</option>
+            </select>
+          </label>
+          <div id="vehicle-classification" class="classification" aria-live="polite"></div>
+
+          <fieldset class="discount-fieldset">
+            <legend>할인 자격</legend>
+            <p>중복 대상이어도 가장 높은 할인 하나만 선택해 주세요.</p>
+            <div class="discount-options">
+              <label class="discount-card">
+                <input type="radio" name="discount" value="none" checked>
+                <span><b>해당 없음</b><small>일반요금</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="compact">
+                <span><b>경차</b><small>50% 할인</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="low1">
+                <span><b>저공해 1종</b><small>전기·수소 · 50%</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="low2">
+                <span><b>저공해 2종</b><small>하이브리드 등 · 50%</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="low3">
+                <span><b>저공해 3종</b><small>20% 할인</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="multi-child">
+                <span><b>다자녀</b><small>사전등록 · 50%</small></span>
+              </label>
+              <label class="discount-card">
+                <input type="radio" name="discount" value="welfare">
+                <span><b>장애인·유공자</b><small>50% 할인</small></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="eco-lookup">
+            <div>
+              <b>내 차 저공해 등급이 궁금하다면</b>
+              <span>공식 사이트에서 차량번호로 확인할 수 있어요.</span>
+            </div>
+            <a href="https://ev.or.kr/nportal/buySupprt/initMycarNonpolluCheckAction.do" target="_blank" rel="noopener noreferrer">등급 확인 ↗</a>
+          </div>
+
+          <div id="form-error" class="form-error" role="alert" hidden></div>
+        </section>
+      </form>
+
+      <aside class="result-panel" aria-labelledby="result-heading">
+        <div class="result-topline">
+          <span>예상 주차요금</span>
+          <span id="result-status" class="status-pill">계산 완료</span>
+        </div>
+        <h2 id="result-heading"><span id="final-price">0</span><small>원</small></h2>
+        <p id="result-summary" class="result-summary">조건을 선택하면 자동으로 계산됩니다.</p>
+
+        <dl class="price-breakdown">
+          <div>
+            <dt>주차 기간</dt>
+            <dd id="duration-text">—</dd>
+          </div>
+          <div>
+            <dt>기본 주차요금</dt>
+            <dd id="base-price">0원</dd>
+          </div>
+          <div>
+            <dt id="discount-label">할인</dt>
+            <dd id="discount-price">-0원</dd>
+          </div>
+        </dl>
+
+        <div class="result-divider"></div>
+
+        <div class="selection-summary">
+          <span id="selected-airport">—</span>
+          <span id="selected-lot">—</span>
+          <span id="selected-vehicle">—</span>
+        </div>
+
+        <div class="result-notice">
+          <b>계산 전 꼭 확인해 주세요</b>
+          <p id="calculation-note">실제 요금은 현장 운영과 공휴일 지정에 따라 달라질 수 있어요.</p>
+        </div>
+
+        <a id="official-source" class="source-link" href="#" target="_blank" rel="noopener noreferrer">공식 요금표 확인하기 <span>↗</span></a>
+      </aside>
+    </section>
+
+    <section class="guide-section" aria-labelledby="guide-heading">
+      <div>
+        <span class="guide-kicker">차량 선택 가이드</span>
+        <h2 id="guide-heading">소형차와 경차,<br>같은 말이 아니에요.</h2>
+      </div>
+      <div class="guide-grid">
+        <article>
+          <span>요금 구분</span>
+          <h3>소형</h3>
+          <p>승용차는 배기량이나 차체 크기와 관계없이 대부분 소형 주차요금이 적용돼요.</p>
+        </article>
+        <article>
+          <span>할인 구분</span>
+          <h3>경차</h3>
+          <p>자동차관리법상 경형자동차에 해당하면 주차요금 할인 대상이 될 수 있어요.</p>
+        </article>
+        <article>
+          <span>친환경 구분</span>
+          <h3>저공해 1·2·3종</h3>
+          <p>전기차·하이브리드라는 이름보다 공식 저공해 등급을 기준으로 할인율을 적용해요.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><b>공항주차비</b>는 공식 공항 자료를 바탕으로 한 예상 계산 서비스입니다.</p>
+    <p>실제 결제금액은 현장 요금 정책, 공휴일, 감면 승인 여부에 따라 달라질 수 있습니다.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
