@@ -323,6 +323,57 @@ const AIRPORTS = {
   }
 };
 
+const TERMINALS = {
+  incheon: [
+    { id: "t1", label: "제1여객터미널 (T1)" },
+    { id: "t2", label: "제2여객터미널 (T2)" }
+  ],
+  gimpo: [
+    { id: "domestic", label: "국내선 청사" },
+    { id: "international", label: "국제선 청사" }
+  ],
+  gimhae: [
+    { id: "domestic", label: "국내선 청사" },
+    { id: "international", label: "국제선 청사" }
+  ]
+};
+
+const MAP_SOURCES = {
+  incheon: "https://www.airport.kr/ap_ko/955/subview.do",
+  gimpo: "https://www.airport.co.kr/gimpo/cms/frCon/index.do?CONTENTS_NO=1&MENU_ID=1360",
+  gimhae: "https://www.airport.co.kr/gimhae/cms/frCon/index.do?CONTENTS_NO=1&MENU_ID=190",
+  jeju: "https://www.airport.co.kr/jeju/cms/frCon/index.do?CONTENTS_NO=1&MENU_ID=120",
+  cheongju: "https://www.airport.co.kr/cheongju/cms/frCon/index.do?CONTENTS_NO=1&MENU_ID=170"
+};
+
+const LOT_ACCESS = {
+  incheon: {
+    short: { mode: "도보", detail: "선택 터미널 앞 단기주차 구역", rank: 1, terminals: ["t1", "t2"] },
+    long: { mode: "셔틀", detail: "장기주차 구역 · 터미널 이동 동선 확인", rank: 2, terminals: ["t1", "t2"] },
+    reserved: { mode: "셔틀", detail: "예약 전용 구역 · 사전 예약 필요", rank: 3, status: "사전 예약", terminals: ["t1", "t2"] },
+    cargo: { mode: "별도 구역", detail: "화물터미널 이용 차량 중심", rank: 9, status: "화물청사", recommend: false, terminals: [] }
+  },
+  gimpo: {
+    domestic: { mode: "도보", detail: "국내선 청사 인접", rank: 1, terminals: ["domestic"] },
+    "international-underground": { mode: "도보", detail: "국제선 청사 인접 지하주차장", rank: 1, terminals: ["international"] },
+    "international-building": { mode: "도보", detail: "국제선 주차빌딩", rank: 2, terminals: ["international"] },
+    cargo: { mode: "별도 구역", detail: "화물청사 이용 차량 중심", rank: 9, status: "화물청사", recommend: false, terminals: [] }
+  },
+  gimhae: {
+    p1p2: { mode: "도보", detail: "국내선·국제선 여객청사 인접", rank: 1, terminals: ["domestic", "international"] },
+    p3: { mode: "순환버스", detail: "무료 순환버스 · 약 10분 간격(05:00~22:50)", rank: 2, terminals: ["domestic", "international"] }
+  },
+  jeju: {
+    p1: { mode: "도보", detail: "여객터미널 앞 주차 구역", rank: 1 },
+    p2: { mode: "도보", detail: "장기주차 구역 · 공식 동선 확인", rank: 2 }
+  },
+  cheongju: {
+    p1p2: { mode: "도보", detail: "여객터미널 인접 주차장", rank: 1 },
+    p3p4: { mode: "도보", detail: "제1·2주차장 만차 시에만 운영", rank: 3, status: "만차 시 운영", conditional: true, recommend: false },
+    p5: { mode: "도보", detail: "대형차량 전용 주차 구역", rank: 2 }
+  }
+};
+
 const VEHICLES = {
   passenger: {
     feeClass: "small",
@@ -363,6 +414,7 @@ const DISCOUNTS = {
 
 const $ = (selector) => document.querySelector(selector);
 const airportSelect = $("#airport");
+const terminalSelect = $("#terminal");
 const lotSelect = $("#parking-lot");
 const entryInput = $("#entry-time");
 const exitInput = $("#exit-time");
@@ -370,6 +422,7 @@ const vehicleSelect = $("#vehicle-type");
 const errorBox = $("#form-error");
 const holidayInput = $("#holiday-date");
 const holidayDates = new Set();
+let recommendedLotId = null;
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -402,6 +455,24 @@ function buildAirportOptions() {
     .join("");
 }
 
+function terminalOptions() {
+  return TERMINALS[airportSelect.value] || [{ id: "main", label: "단일 여객터미널" }];
+}
+
+function updateTerminalOptions() {
+  const previous = terminalSelect.value;
+  const terminals = terminalOptions();
+  terminalSelect.innerHTML = terminals
+    .map((terminal) => `<option value="${terminal.id}">${terminal.label}</option>`)
+    .join("");
+  if (terminals.some((terminal) => terminal.id === previous)) terminalSelect.value = previous;
+  terminalSelect.disabled = terminals.length <= 1;
+}
+
+function currentTerminal() {
+  return terminalOptions().find((terminal) => terminal.id === terminalSelect.value) || terminalOptions()[0];
+}
+
 function currentVehicle() {
   return VEHICLES[vehicleSelect.value];
 }
@@ -413,6 +484,15 @@ function currentAirport() {
 function eligibleLots() {
   const feeClass = currentVehicle().feeClass;
   return currentAirport().lots.filter((lot) => lot.rates[feeClass]);
+}
+
+function accessForLot(lot) {
+  const airportAccess = LOT_ACCESS[airportSelect.value] || {};
+  return airportAccess[lot.id] || {
+    mode: "도보",
+    detail: "여객터미널 인접 주차장",
+    rank: 1
+  };
 }
 
 function updateLotOptions() {
@@ -516,6 +596,124 @@ function updateHolidayLimits() {
   if (!Number.isNaN(exit.getTime())) holidayInput.max = toDateKey(exit);
 }
 
+function quoteAllLots(start, end, discount) {
+  const feeClass = currentVehicle().feeClass;
+  return eligibleLots().map((lot) => {
+    const calculation = calculateBasePrice(lot.rates[feeClass], start, end);
+    const discountAmount = Math.round(calculation.total * discount.rate);
+    return {
+      lot,
+      calculation,
+      discountAmount,
+      finalPrice: calculation.total - discountAmount,
+      access: accessForLot(lot)
+    };
+  });
+}
+
+function chooseRecommendedQuote(quotes) {
+  const terminalId = currentTerminal().id;
+  const preferred = quotes.filter(({ access }) => (
+    access.recommend !== false
+    && (!access.terminals || access.terminals.includes(terminalId))
+  ));
+  const candidates = preferred.length ? preferred : quotes.filter(({ access }) => access.recommend !== false);
+  const fallback = candidates.length ? candidates : quotes;
+  return [...fallback].sort((a, b) => (
+    a.finalPrice - b.finalPrice || a.access.rank - b.access.rank
+  ))[0] || null;
+}
+
+function selectLot(lotId) {
+  if (!eligibleLots().some((lot) => lot.id === lotId)) return;
+  lotSelect.value = lotId;
+  calculate();
+}
+
+function renderRecommendation(recommended, quotes) {
+  const button = $("#use-recommended");
+  recommendedLotId = recommended ? recommended.lot.id : null;
+  button.disabled = !recommended || recommendedLotId === lotSelect.value;
+  button.textContent = recommendedLotId === lotSelect.value ? "선택됨" : "추천 선택";
+
+  if (!recommended) {
+    $("#recommended-lot").textContent = "추천 결과를 확인할 수 없어요";
+    $("#recommended-reason").textContent = "입력한 시간과 차량 조건을 다시 확인해 주세요.";
+    return;
+  }
+
+  $("#recommended-lot").textContent = recommended.lot.name;
+  const hasCheaperConditionalLot = quotes.some((quote) => (
+    quote.access.conditional && quote.finalPrice < recommended.finalPrice
+  ));
+  const basis = hasCheaperConditionalLot
+    ? "조건부 운영 주차장을 제외한 상시 이용 기준"
+    : quotes.length > 1
+      ? "선택 터미널·운영조건·예상요금 반영"
+      : "현재 차량이 이용 가능한 주차장";
+  $("#recommended-reason").textContent = `${formatWon(recommended.finalPrice)} · ${basis} · ${recommended.access.mode}`;
+}
+
+function renderMap(quotes, recommended) {
+  const quoteById = new Map(quotes.map((quote) => [quote.lot.id, quote]));
+  const terminal = currentTerminal();
+  const lot = currentLot();
+  const selectedAccess = lot ? accessForLot(lot) : null;
+  $("#map-terminal").textContent = terminal.label;
+  $("#map-source").href = MAP_SOURCES[airportSelect.value] || currentAirport().source;
+  $("#access-mode").textContent = selectedAccess ? selectedAccess.mode : "이동 정보";
+  $("#access-detail").textContent = selectedAccess ? selectedAccess.detail : "이용 가능한 주차장을 확인해 주세요.";
+
+  const container = $("#map-lots");
+  container.innerHTML = eligibleLots().map((mapLot) => {
+    const quote = quoteById.get(mapLot.id);
+    const access = accessForLot(mapLot);
+    const classes = ["map-lot"];
+    if (mapLot.id === lotSelect.value) classes.push("selected");
+    if (recommended && mapLot.id === recommended.lot.id) classes.push("recommended");
+    return `<button type="button" class="${classes.join(" ")}" data-map-lot="${mapLot.id}" aria-pressed="${mapLot.id === lotSelect.value}"><b>${mapLot.name}</b><small>${quote ? formatWon(quote.finalPrice) : access.mode}</small></button>`;
+  }).join("");
+
+  container.querySelectorAll("[data-map-lot]").forEach((button) => {
+    button.addEventListener("click", () => selectLot(button.dataset.mapLot));
+  });
+}
+
+function renderComparison(quotes, recommended) {
+  const container = $("#lot-comparison");
+  const selectedId = lotSelect.value;
+  const sorted = [...quotes].sort((a, b) => a.finalPrice - b.finalPrice || a.access.rank - b.access.rank);
+  container.innerHTML = sorted.map((quote, index) => {
+    const isRecommended = recommended && quote.lot.id === recommended.lot.id;
+    const isSelected = quote.lot.id === selectedId;
+    const classes = ["comparison-card"];
+    if (isRecommended) classes.push("is-recommended");
+    if (isSelected) classes.push("is-selected");
+    return `<article class="${classes.join(" ")}">
+      <div class="comparison-card-top">
+        <div><span class="comparison-rank">PRICE ${String(index + 1).padStart(2, "0")}</span><h3>${quote.lot.name}</h3></div>
+        <div class="comparison-badges">
+          ${isRecommended ? '<span class="best-badge">추천</span>' : ""}
+          ${quote.access.status ? `<span class="condition-badge">${quote.access.status}</span>` : ""}
+        </div>
+      </div>
+      <strong class="comparison-price">${formatWon(quote.finalPrice)}</strong>
+      <p class="comparison-access">${quote.access.mode} · ${quote.access.detail}</p>
+      <button type="button" data-compare-lot="${quote.lot.id}" ${isSelected ? "disabled" : ""}>${isSelected ? "현재 선택" : "이 주차장 선택"}</button>
+    </article>`;
+  }).join("");
+
+  container.querySelectorAll("[data-compare-lot]").forEach((button) => {
+    button.addEventListener("click", () => selectLot(button.dataset.compareLot));
+  });
+}
+
+function renderUnavailableState() {
+  renderRecommendation(null, []);
+  renderMap([], null);
+  $("#lot-comparison").innerHTML = '<p class="comparison-empty">입차·출차 시간을 올바르게 입력하면 주차장별 요금이 표시됩니다.</p>';
+}
+
 function calculate() {
   updateLotNote();
   updateHolidayLimits();
@@ -529,26 +727,33 @@ function calculate() {
 
   if (!entryInput.value || !exitInput.value || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     showError("입차와 출차 일시를 모두 입력해 주세요.");
+    renderUnavailableState();
     return;
   }
   if (end <= start) {
     showError("출차 일시는 입차 일시보다 늦어야 합니다.");
+    renderUnavailableState();
     return;
   }
   if (end - start > 365 * 24 * 60 * 60 * 1000) {
     showError("MVP에서는 최대 365일까지 계산할 수 있습니다.");
+    renderUnavailableState();
     return;
   }
   if (!lot) {
     showError("선택한 차량이 이용할 수 있는 주차장이 없습니다.");
+    renderUnavailableState();
     return;
   }
 
   clearError();
+  const quotes = quoteAllLots(start, end, discount);
+  const selectedQuote = quotes.find((quote) => quote.lot.id === lot.id);
+  const recommended = chooseRecommendedQuote(quotes);
   const rule = lot.rates[vehicle.feeClass];
-  const calculation = calculateBasePrice(rule, start, end);
-  const discountAmount = Math.round(calculation.total * discount.rate);
-  const finalPrice = calculation.total - discountAmount;
+  const calculation = selectedQuote.calculation;
+  const discountAmount = selectedQuote.discountAmount;
+  const finalPrice = selectedQuote.finalPrice;
   const peakSegments = calculation.segments.filter((segment) => segment.peak).length;
   const duration = formatDuration(start, end);
 
@@ -559,9 +764,13 @@ function calculate() {
   $("#discount-price").textContent = discountAmount ? `-${formatWon(discountAmount)}` : "0원";
   $("#result-summary").textContent = `${airport.name} ${lot.name}에서 ${duration} 주차하는 조건입니다.`;
   $("#selected-airport").textContent = `${airport.code} ${airport.name.replace("국제공항", "").replace("공항", "")}`;
+  $("#selected-terminal").textContent = currentTerminal().label;
   $("#selected-lot").textContent = lot.name;
   $("#selected-vehicle").textContent = vehicle.feeClass === "small" ? "소형 요금" : "대형 요금";
   $("#official-source").href = airport.source;
+  renderRecommendation(recommended, quotes);
+  renderMap(quotes, recommended);
+  renderComparison(quotes, recommended);
 
   const notes = [];
   if (rule.free) {
@@ -601,6 +810,7 @@ function addHoliday() {
 }
 
 function handleAirportChange() {
+  updateTerminalOptions();
   updateLotOptions();
   calculate();
 }
@@ -612,12 +822,16 @@ function handleVehicleChange() {
 }
 
 airportSelect.addEventListener("change", handleAirportChange);
+terminalSelect.addEventListener("change", calculate);
 lotSelect.addEventListener("change", calculate);
 vehicleSelect.addEventListener("change", handleVehicleChange);
 entryInput.addEventListener("change", calculate);
 exitInput.addEventListener("change", calculate);
 document.querySelectorAll('input[name="discount"]').forEach((input) => input.addEventListener("change", calculate));
 $("#add-holiday").addEventListener("click", addHoliday);
+$("#use-recommended").addEventListener("click", () => {
+  if (recommendedLotId) selectLot(recommendedLotId);
+});
 holidayInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -636,6 +850,7 @@ document.querySelectorAll("[data-days]").forEach((button) => {
 });
 
 buildAirportOptions();
+updateTerminalOptions();
 setDefaultDates();
 updateVehicleClassification();
 updateLotOptions();

@@ -13,14 +13,14 @@
       <span class="brand-mark" aria-hidden="true">P</span>
       <span>공항주차비</span>
     </a>
-    <p class="header-note">전국 15개 공항 · 2026년 9월 확인</p>
+    <p class="header-note"><span class="live-dot" aria-hidden="true"></span> 전국 15개 공항 · 2026년 9월 확인</p>
   </header>
 
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="eyebrow"><span></span> 떠나기 전, 주차비부터 가볍게</div>
-      <h1 id="hero-title">공항 주차비,<br><em>미리 알고 출발하세요.</em></h1>
-      <p>공항과 시간을 고르면 차량·할인 조건까지 반영해 예상 요금을 바로 계산해 드려요.</p>
+      <div class="eyebrow"><span></span> AIRPORT PARKING FEE</div>
+      <h1 id="hero-title">주차 위치와 요금,<br><em>출발 전에 한 번에.</em></h1>
+      <p>공항·터미널·시간을 고르면 가장 합리적인 주차장을 찾아 예상요금까지 비교해 드려요.</p>
       <div class="airport-strip" aria-label="지원 공항">
         <span>ICN</span><i></i><span>GMP</span><i></i><span>CJU</span><i></i><span>PUS</span><i></i><span>+11</span>
       </div>
@@ -37,10 +37,14 @@
             </div>
           </div>
 
-          <div class="field-grid two-columns">
+          <div class="field-grid three-columns airport-fields">
             <label class="field">
               <span>공항</span>
               <select id="airport" name="airport"></select>
+            </label>
+            <label class="field">
+              <span>이용 터미널</span>
+              <select id="terminal" name="terminal"></select>
             </label>
             <label class="field">
               <span>주차장</span>
@@ -48,6 +52,38 @@
             </label>
           </div>
           <p id="lot-note" class="inline-note"></p>
+
+          <div id="recommendation-card" class="recommendation-card" aria-live="polite">
+            <div class="recommendation-icon" aria-hidden="true">P</div>
+            <div class="recommendation-copy">
+              <span class="recommendation-kicker">조건에 맞는 추천</span>
+              <b id="recommended-lot">주차장을 분석하고 있어요</b>
+              <small id="recommended-reason">입출차 시간을 입력하면 최저 예상요금을 비교합니다.</small>
+            </div>
+            <button id="use-recommended" type="button">추천 선택</button>
+          </div>
+
+          <div class="parking-preview" aria-labelledby="parking-preview-title">
+            <div class="preview-heading">
+              <div>
+                <span>주차장 미리보기</span>
+                <h3 id="parking-preview-title">터미널과 주차장 위치</h3>
+              </div>
+              <span class="schematic-label">개념도</span>
+            </div>
+            <div class="airport-map" role="group" aria-label="주차장 개념도">
+              <div id="map-terminal" class="terminal-block">여객터미널</div>
+              <div class="route-line" aria-hidden="true"><span></span><span></span><span></span></div>
+              <div id="map-lots" class="map-lots"></div>
+            </div>
+            <div class="access-summary">
+              <div>
+                <span id="access-mode" class="access-badge">도보</span>
+                <b id="access-detail">선택 주차장의 이동 정보를 확인하세요.</b>
+              </div>
+              <a id="map-source" href="#" target="_blank" rel="noopener noreferrer">공식 주차 안내 ↗</a>
+            </div>
+          </div>
         </section>
 
         <section class="form-section" aria-labelledby="schedule-heading">
@@ -186,6 +222,7 @@
 
         <div class="selection-summary">
           <span id="selected-airport">—</span>
+          <span id="selected-terminal">—</span>
           <span id="selected-lot">—</span>
           <span id="selected-vehicle">—</span>
         </div>
@@ -197,6 +234,19 @@
 
         <a id="official-source" class="source-link" href="#" target="_blank" rel="noopener noreferrer">공식 요금표 확인하기 <span>↗</span></a>
       </aside>
+    </section>
+
+    <section class="comparison-section" aria-labelledby="comparison-heading">
+      <div class="comparison-heading">
+        <div>
+          <span class="guide-kicker">PARKING COMPARISON</span>
+          <h2 id="comparison-heading">주차장별 예상요금 비교</h2>
+          <p>현재 입력한 시간·차량·할인 조건을 모든 이용 가능 주차장에 동일하게 적용했어요.</p>
+        </div>
+        <div class="comparison-legend"><i></i> 요금·운영조건 반영 추천</div>
+      </div>
+      <div id="lot-comparison" class="comparison-grid" aria-live="polite"></div>
+      <p class="comparison-note">‘만차 시 운영’처럼 이용 조건이 붙은 주차장은 더 저렴해도 자동 추천에서 제외합니다. 실제 운영 여부와 이동 동선은 출발 전 공식 안내를 확인해 주세요.</p>
     </section>
 
     <section class="guide-section" aria-labelledby="guide-heading">
